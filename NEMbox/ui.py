@@ -82,6 +82,8 @@ class Ui(object):
         self.update_space()
         self.lyric = ''
         self.now_lyric = ''
+        self.post_lyric = ''
+        self.now_lyric_index = 0
         self.tlyric = ''
         self.storage = Storage()
         self.config = Config()
@@ -95,7 +97,7 @@ class Ui(object):
 
     def notify(self, summary, song, album, artist):
         if summary != 'disable':
-            body = '%s\nin %s by %s' % (song, album, artist)
+            body = '%s\n专辑 %s 歌手 %s' % (song, album, artist)
             content = summary + ': ' + body
             notify(content)
 
@@ -136,12 +138,19 @@ class Ui(object):
         self.screen.clrtoeol()
         self.screen.move(4, 1)
         self.screen.clrtoeol()
+        self.screen.move(5, 1)
+        self.screen.clrtoeol()
         if not playing_flag:
             return
         if total_length <= 0:
             total_length = 1
         if now_playing > total_length or now_playing <= 0:
             now_playing = 0
+        if now_playing == 0:
+            self.now_lyric_index = 0
+            self.now_lyric = ''
+            self.post_lyric = ''
+
         process = '[𝄞'
         for i in range(0, 33):
             if i < now_playing / total_length * 33:
@@ -192,14 +201,23 @@ class Ui(object):
                 self.storage.database['player_info']['idx']]]
         if 'lyric' not in song.keys() or len(song['lyric']) <= 0:
             self.now_lyric = '暂无歌词 ~>_<~ \n'
+            self.post_lyric = ''
             if dbus_activity and self.config.get_item('osdlyrics'):
                 self.now_playing = song['song_name'] + ' - ' + song[
                     'artist'] + '\n'
 
         else:
             key = now_minute + ':' + now_second
+            index = 0
             for line in song['lyric']:
                 if key in line:
+                    # 计算下一句歌词，判断刷新时的歌词和上一次是否相同来进行index计算
+                    if not (self.now_lyric == re.sub('\[.*?\]', '', line)):
+                        self.now_lyric_index = self.now_lyric_index + 1
+                    if index < len(song['lyric']) - 1 :
+                        self.post_lyric = song['lyric'][index + 1]
+                    else:
+                        self.post_lyric = ''
                     if 'tlyric' not in song.keys() or len(song['tlyric']) <= 0:
                         self.now_lyric = line
                     else:
@@ -208,10 +226,19 @@ class Ui(object):
                             if key in tline and self.config.get_item(
                                     'translation'):
                                 self.now_lyric = tline + ' || ' + self.now_lyric  # NOQA
+                                if not (self.post_lyric == ''):
+                                    self.post_lyric = tline + ' || ' + self.post_lyric
+                                #此处已经拿到，直接break即可
+                                break
+                    #此处已经拿到，直接break即可
+                    break
+                index += 1
         self.now_lyric = re.sub('\[.*?\]', '', self.now_lyric)
+        self.post_lyric = re.sub('\[.*?\]', '', self.post_lyric)
         if dbus_activity and self.config.get_item('osdlyrics'):
             try:
                 bus = dbus.SessionBus().get_object('org.musicbox.Bus', '/')
+                #TODO 环境问题，没有试过桌面歌词，此处需要了解的人加个刷界面操作
                 if self.now_lyric == '暂无歌词 ~>_<~ \n':
                     bus.refresh_lyrics(self.now_playing,
                                        dbus_interface='local.musicbox.Lyrics')
@@ -221,8 +248,18 @@ class Ui(object):
             except Exception as e:
                 log.error(e)
                 pass
-        self.addstr(4, self.startcol - 2, str(self.now_lyric),
-                    curses.color_pair(3))
+        #根据索引计算双行歌词的显示，其中当前歌词颜色为红色，下一句歌词颜色为白色；
+        # 当前歌词从下一句歌词刷新颜色变换，所以当前歌词和下一句歌词位置会交替
+        if self.now_lyric_index % 2 == 0:
+            self.addstr(4, self.startcol - 2, str(self.now_lyric),
+                        curses.color_pair(3))
+            self.addstr(5, self.startcol + 1, str(self.post_lyric),
+                        curses.A_DIM)
+        else:
+            self.addstr(4, self.startcol - 2, str(self.post_lyric),
+                        curses.A_DIM)
+            self.addstr(5, self.startcol + 1, str(self.now_lyric),
+                        curses.color_pair(3))
         self.screen.refresh()
 
     def build_loading(self):
@@ -235,9 +272,9 @@ class Ui(object):
                    start):
         # keep playing info in line 1
         curses.noecho()
-        self.screen.move(5, 1)
+        self.screen.move(7, 1)
         self.screen.clrtobot()
-        self.addstr(5, self.startcol, title, curses.color_pair(1))
+        self.addstr(7, self.startcol, title, curses.color_pair(1))
 
         if len(datalist) == 0:
             self.addstr(8, self.startcol, '这里什么都没有 -，-')
@@ -606,6 +643,7 @@ class Ui(object):
                     curses.color_pair(1))
         self.screen.refresh()
         info = self.screen.getstr(10, self.startcol, 60)
+        info = info.decode('utf8')
         if info == '':
             return '/return'
         elif info.strip() is '':

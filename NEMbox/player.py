@@ -23,6 +23,7 @@ import time
 import os
 import random
 import re
+import platform
 
 from .ui import Ui
 from .storage import Storage
@@ -75,6 +76,7 @@ class Player(object):
                                                       stderr=subprocess.PIPE)
                 self.popen_handler.stdin.write(b'V ' + str(self.info['playing_volume']).encode('utf-8') + b'\n')
                 if arg:
+                    log.debug("now playing with url:" + arg)
                     self.popen_handler.stdin.write(b'L ' + arg.encode('utf-8') + b'\n')
                 else:
                     self.next_idx()
@@ -87,6 +89,7 @@ class Player(object):
                 log.error(e)
 
             self.process_first = True
+            endless_loop_cnt = 0
             while True:
                 if self.playing_flag is False:
                     break
@@ -116,11 +119,27 @@ class Player(object):
                     popenArgs['mp3_url'] = new_url
 
                     try:
+                        log.debug("now playing with new url:" + new_url)
                         self.popen_handler.stdin.write(b'\nL ' + new_url.encode('utf-8') + b'\n')
                         self.popen_handler.stdin.flush()
                         self.popen_handler.stdout.readline()
                     except IOError as e:
-                        log.error(e)
+                        log.error('we quit when ioerror occor')
+                        try:
+                            log.error(e)
+                        except Exception as e:
+                            pass
+                        # 如果io错误发生了，我们终止线程退出然后播放下一首
+                        try:
+                            self.popen_handler.stdin.write(b'Q\n')
+                            self.popen_handler.stdin.flush()
+                            self.popen_handler.kill()
+                        except IOError as e1:
+                            try:
+                                log.error(e1)
+                            except Exception as e2:
+                                pass
+                        break
                 elif strout == '@P 0\n':
                     try:
                         self.popen_handler.stdin.write(b'Q\n')
@@ -129,7 +148,22 @@ class Player(object):
                     except IOError as e:
                         log.error(e)
                     break
-
+                else:
+                    #有遇到播放玩后没有退出，mpg123一直在发送空消息的情况，此处直接终止处理
+                    if len(strout) == 0:
+                        endless_loop_cnt += 1
+                        if platform.system() == 'Darwin' or endless_loop_cnt > 100:
+                            log.error('mpg123 error, halt, endless loop and high cpu use, then we kill it')
+                            try:
+                                self.popen_handler.stdin.write(b'Q\n')
+                                self.popen_handler.stdin.flush()
+                                self.popen_handler.kill()
+                            except IOError as e:
+                                try:
+                                    log.error(e)
+                                except Exception as e1:
+                                    pass
+                            break
             if self.playing_flag:
                 self.next_idx()
                 onExit()
@@ -210,7 +244,7 @@ class Player(object):
                                item['album_name'], item['quality'],
                                time.time())
         if self.notifier:
-            self.ui.notify('Now playing', item['song_name'],
+            self.ui.notify('正在播放', item['song_name'],
                            item['album_name'], item['artist'])
         self.playing_id = item['song_id']
         self.playing_name = item['song_name']
