@@ -16,6 +16,7 @@ from future import standard_library
 standard_library.install_aliases()
 import hashlib
 import re
+import random
 import curses
 
 from .api import NetEase
@@ -35,6 +36,9 @@ except ImportError:
     dbus_activity = False
     log.warn('Qt dbus module is not installed.')
     log.warn('Osdlyrics is not available.')
+
+
+SYMBOLS = ['♫', '♪', '♩', '♬']
 
 
 def break_str(s, start, max_len=80):
@@ -138,14 +142,14 @@ class Ui(object):
             total_length = 1
         if now_playing > total_length or now_playing <= 0:
             now_playing = 0
-        process = '['
+        process = '[𝄞'
         for i in range(0, 33):
             if i < now_playing / total_length * 33:
                 if (i + 1) > now_playing / total_length * 33:
                     if not pause_flag:
-                        process += '>'
+                        process += random.choice(SYMBOLS)
                         continue
-                process += '='
+                process += random.choice(['♩', '♪'])
             else:
                 process += ' '
         process += '] '
