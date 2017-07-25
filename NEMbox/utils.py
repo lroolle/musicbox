@@ -31,21 +31,21 @@ def notify_command_osx(msg, msg_type, t=None):
     return command
 
 
-def notify_command_linux(msg, t=None):
-    command = ['/usr/bin/notify-send']
-    command.append(msg.encode('UTF-8'))
+def notify_command_linux(title, msg, t=None):
+    command = ['/usr/bin/notify-send', title]
+    command.append(msg)
     if t:
         command.extend(['-t', str(t)])
     command.extend(['-h', 'int:transient:1'])
     return command
 
 
-def notify(msg, msg_type=0, t=None):
+def notify(msg, msg_type=0, t=None, title='Netease Musicbox'):
     "Show system notification with duration t (ms)"
     if platform.system() == 'Darwin':
         command = notify_command_osx(msg, msg_type, t)
     else:
-        command = notify_command_linux(msg, t)
+        command = notify_command_linux(title, msg, t)
     try:
         subprocess.call(command)
     except OSError as e:

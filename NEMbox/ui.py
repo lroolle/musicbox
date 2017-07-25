@@ -95,11 +95,15 @@ class Ui(object):
         else:
             self.screen.addstr(args[0], args[1], args[2].encode('utf-8'), *args[3:])
 
-    def notify(self, summary, song, album, artist):
-        if summary != 'disable':
-            body = '%s\n专辑 %s 歌手 %s' % (song, album, artist)
-            content = summary + ': ' + body
-            notify(content)
+    def notify(self, summary, song, album, artist, next=''):
+        if summary == 'disable':
+            return
+
+        title = '%d: %s' % (summary + 1, song)
+        body = '\n - %s\n -《%s》' % (artist, album)
+        if next:
+            body += '\n\n Next: ' + next
+        notify(msg=body, title=title)
 
     def build_playinfo(self,
                        song_name,

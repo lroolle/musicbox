@@ -244,8 +244,16 @@ class Player(object):
                                item['album_name'], item['quality'],
                                time.time())
         if self.notifier:
-            self.ui.notify('正在播放', item['song_name'],
-                           item['album_name'], item['artist'])
+            try:
+                next_item = self.songs[self.info['player_list'][self.info['idx'] + 1]]
+            except IndexError:
+                next_item = {}
+            self.ui.notify(
+                self.info['idx'], item['song_name'],
+                item['album_name'], item['artist'],
+                next_item.get('song_name', '')
+            )
+
         self.playing_id = item['song_id']
         self.playing_name = item['song_name']
         self.popen_recall(self.recall, item)
