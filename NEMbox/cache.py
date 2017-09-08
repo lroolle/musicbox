@@ -41,6 +41,7 @@ class Cache(Singleton):
         self.wget = None
         self.stop = False
         self.enable = self.config.get_item('cache')
+        self.output_fmt = self.config.get_item('cache_output_fmt')
         self.aria2c_parameters = self.config.get_item('aria2c_parameters')
 
     def _is_cache_successful(self):
@@ -60,6 +61,10 @@ class Cache(Singleton):
         try:
             os.mkdir(name)
         except OSError:
+            pass
+
+    def get_output_file(fmt=None, *args):
+        if not fmt:
             pass
 
     def start_download(self):

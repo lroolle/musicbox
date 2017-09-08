@@ -33,6 +33,12 @@ class Config(Singleton):
                 'describe': ('A toggle to enable cache function or not. '
                              'Set value to true to enable it.')
             },
+            'cache_output_fmt': {
+                'value': '',
+                'default': './',
+                'describe': ('A toggle to enable cache function or not. '
+                             'Set value to true to enable it.')
+            },
             'mpg123_parameters': {
                 'value': [],
                 'default': [],
